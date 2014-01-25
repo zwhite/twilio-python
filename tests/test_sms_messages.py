@@ -3,6 +3,7 @@ import unittest
 
 from mock import Mock
 
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import SmsMessages
 
 DEFAULT = {
@@ -12,11 +13,13 @@ DEFAULT = {
     'DateSent': None,
 }
 
+client = TwilioRestClient("sid", "token")
+
 
 class SmsTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = SmsMessages("foo", ("sid", "token"))
+        self.resource = SmsMessages("foo", client)
         self.params = DEFAULT.copy()
 
     def test_list_on(self):

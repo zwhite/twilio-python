@@ -18,3 +18,6 @@
    :members:
    :inherited-members:
 
+.. autoclass:: Transport
+   :members:
+   :inherited-members:

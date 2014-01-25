@@ -7,3 +7,7 @@ def create_mock_json(path):
         resp = Mock()
         resp.content = f.read()
         return resp
+
+
+class DummyRestClient():
+    pass

@@ -1,16 +1,19 @@
 from mock import patch, Mock
 from nose.tools import raises
-from twilio.rest.resources import Transcriptions, Transcription
+
 from tools import create_mock_json
+from twilio.rest import TwilioRestClient
+from twilio.rest.resources import Transcriptions, Transcription
 
 BASE_URI = "https://api.twilio.com/2010-04-01/Accounts/AC123"
 ACCOUNT_SID = "AC123"
 AUTH = (ACCOUNT_SID, "token")
+client = TwilioRestClient(ACCOUNT_SID, "token")
 
-transcriptions = Transcriptions(BASE_URI, AUTH)
+transcriptions = Transcriptions(BASE_URI, client)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_paging(mock):
     resp = create_mock_json("tests/resources/transcriptions_list.json")
     mock.return_value = resp
@@ -18,10 +21,10 @@ def test_paging(mock):
     uri = "%s/Transcriptions" % (BASE_URI)
     transcriptions.list(page=2)
 
-    mock.assert_called_with("GET", uri, params={"Page": 2}, auth=AUTH)
+    mock.assert_called_with("GET", uri, params={"Page": 2})
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_get(mock):
     resp = create_mock_json("tests/resources/transcriptions_instance.json")
     mock.return_value = resp
@@ -29,16 +32,16 @@ def test_get(mock):
     uri = "%s/Transcriptions/TR123" % (BASE_URI)
     transcriptions.get("TR123")
 
-    mock.assert_called_with("GET", uri, auth=AUTH)
+    mock.assert_called_with("GET", uri)
 
 
-@patch("twilio.rest.resources.base.Resource.request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_delete_transcription(req):
     """ Deleting a transcription should work """
     resp = Mock()
     resp.content = ""
     resp.status_code = 204
-    req.return_value = resp, {}
+    req.return_value = resp
 
     app = Transcription(transcriptions, "TR123")
     app.delete()

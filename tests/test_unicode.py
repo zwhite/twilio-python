@@ -1,90 +1,55 @@
 # -*- coding: utf-8 -*-
-from mock import patch, Mock
+from mock import patch, ANY
 from six import u
-from twilio.rest import resources
+from twilio.rest import TwilioRestClient
+
+client = TwilioRestClient("sid", "token")
 
 
-@patch("httplib2.Http")
-@patch("twilio.rest.resources.base.Response")
-def test_ascii_encode(resp_mock, mock):
-    http = mock.return_value
-    http.request.return_value = (Mock(), Mock())
-
-    data = {
-        "body": "HeyHey".encode('utf-8')
-    }
-
-    resources.make_request("GET", "http://www.example.com", data=data)
-
-    http.request.assert_called_with("http://www.example.com", "GET",
-                                    headers=None, body="body=HeyHey")
-
-
-@patch("httplib2.Http")
-@patch("twilio.rest.resources.base.Response")
-def test_ascii(resp_mock, mock):
-    http = mock.return_value
-    http.request.return_value = (Mock(), Mock())
-
-    data = {
-        "body": "HeyHey"
-    }
-
-    resources.make_request("GET", "http://www.example.com", data=data)
-
-    http.request.assert_called_with("http://www.example.com", "GET",
-                                    headers=None, body="body=HeyHey")
-
-
-@patch("httplib2.Http")
-@patch("twilio.rest.resources.base.Response")
-def test_double_encoding(resp_mock, mock):
-    http = mock.return_value
-    http.request.return_value = (Mock(), Mock())
-
+@patch("requests.packages.urllib3.connectionpool.HTTPSConnectionPool.urlopen")
+def test_double_encoding(urlopen):
     body = u('Chlo\xe9\xf1')
 
     data = {
         "body": body.encode('utf-8'),
     }
 
-    resources.make_request("GET", "http://www.example.com", data=data)
+    try:
+        client.make_twilio_request("GET", "https://www.example.com", data=data)
+    except Exception:
+        # We don't return a value here, just want to check the encoding of the
+        # request over the wire.
+        pass
 
-    http.request.assert_called_with("http://www.example.com", "GET",
-                                    headers=None, body="body=Chlo%C3%A9%C3%B1")
+    urlopen.assert_called_with(method="GET", url="/",
+                               # Skip all of the urlopen params we don't care
+                               # about...
+                               headers=ANY, retries=ANY, redirect=ANY,
+                               preload_content=ANY, assert_same_host=ANY,
+                               timeout=ANY, decode_content=ANY,
 
-
-@patch("httplib2.Http")
-@patch("twilio.rest.resources.base.Response")
-def test_paging(resp_mock, mock):
-    http = mock.return_value
-    http.request.return_value = (Mock(), Mock())
-
-    data = {
-        "body": u('Chlo\xe9\xf1'),
-    }
-
-    resources.make_request("GET", "http://www.example.com", data=data)
-
-    http.request.assert_called_with("http://www.example.com", "GET",
-                                    headers=None, body="body=Chlo%C3%A9%C3%B1")
+                               # assert that the body is encoded correctly
+                               body='body=Chlo%C3%A9%C3%B1')
 
 
-@patch("httplib2.Http")
-@patch("twilio.rest.resources.base.Response")
-def test_unicode_sequence_form_value(resp_mock, mock):
-    http = mock.return_value
-    http.request.return_value = (Mock(), Mock())
-
+@patch("requests.packages.urllib3.connectionpool.HTTPSConnectionPool.urlopen")
+def test_unicode_sequence_form_value(mock):
     data = {
         "body": [u('\xe5'), u('\xe7')],
     }
 
-    resources.make_request("POST", "http://www.example.com", data=data)
+    try:
+        client.make_twilio_request("POST", "https://www.example.com", data=data)
+    except Exception:
+        # We don't return a value here, just want to check the encoding of the
+        # request over the wire.
+        pass
 
-    http.request.assert_called_with(
-        "http://www.example.com",
-        "POST",
-        headers=None,
+    mock.assert_called_with(
+        method="POST", url="/",
+        headers=ANY, retries=ANY, redirect=ANY,
+        preload_content=ANY, assert_same_host=ANY,
+        timeout=ANY, decode_content=ANY,
+
         body="body=%C3%A5&body=%C3%A7",
     )

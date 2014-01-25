@@ -56,7 +56,7 @@ class MediaList(ListResource):
         # for a given message.
 
         base_uri = "%s/Messages/%s" % (self.base_uri, message_sid)
-        return MediaList(base_uri, self.auth, self.timeout)
+        return MediaList(base_uri, self.client)
 
     def __init__(self, *args, **kwargs):
         super(MediaList, self).__init__(*args, **kwargs)

@@ -108,19 +108,25 @@ class Accounts(ListResource):
 
     def close(self, sid):
         """
-        Permenently deactivate an account, Alias to update
+        Permenently deactivate an account.
+
+        This is an alias to the `update` method.
         """
         return self.update(sid, status=Account.CLOSED)
 
     def suspend(self, sid):
         """
-        Temporarily suspend an account, Alias to update
+        Temporarily suspend an account.
+
+        This is an alias to the `update` method.
         """
         return self.update(sid, status=Account.SUSPENDED)
 
     def activate(self, sid):
         """
-        Reactivate an account, Alias to update
+        Reactivate an account.
+
+        This is an alias to the `update` method.
         """
         return self.update(sid, status=Account.ACTIVE)
 
@@ -128,6 +134,6 @@ class Accounts(ListResource):
         """
         Returns a newly created sub account resource.
 
-        :param friendly_name: Update the description of this account.
+        :param str friendly_name: Update the description of this account.
         """
         return self.create_instance(kwargs)

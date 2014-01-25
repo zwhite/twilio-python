@@ -1,185 +1,9 @@
 import logging
-import os
-import platform
-import sys
-
-from six import integer_types, string_types, binary_type, iteritems, u
 from twilio.compat import urlparse
-from twilio.compat import urlencode
 
-import twilio
-from twilio import TwilioException, TwilioRestException
-from twilio.rest.resources import UNSET_TIMEOUT
-from twilio.rest.resources.connection import Connection
-from twilio.rest.resources.imports import parse_qs, httplib2, json
+from twilio import TwilioException
+from twilio.rest.resources.imports import parse_qs, json
 from twilio.rest.resources.util import transform_params, parse_rfc2822_date
-
-
-class Response(object):
-    """
-    Take a httplib2 response and turn it into a requests response
-    """
-    def __init__(self, httplib_resp, content, url):
-        self.content = content
-        self.cached = False
-        self.status_code = int(httplib_resp.status)
-        self.ok = self.status_code < 400
-        self.url = url
-
-
-def get_cert_file():
-    """ Get the cert file location or bail """
-    # XXX - this currently fails test coverage because we don't actually go
-    # over the network anywhere. Might be good to have a test that stands up a
-    # local server and authenticates against it.
-    try:
-        # Apparently __file__ is not available in all places so wrapping this
-        # in a try/catch
-        current_path = os.path.realpath(__file__)
-        ca_cert_path = os.path.join(current_path, "..", "..", "..",
-                                    "conf", "cacert.pem")
-        return os.path.abspath(ca_cert_path)
-    except Exception:
-        # None means use the default system file
-        return None
-
-
-def make_request(method, url, params=None, data=None, headers=None,
-                 cookies=None, files=None, auth=None, timeout=None,
-                 allow_redirects=False, proxies=None):
-    """Sends an HTTP request
-
-    :param str method: The HTTP method to use
-    :param str url: The URL to request
-    :param dict params: Query parameters to append to the URL
-    :param dict data: Parameters to go in the body of the HTTP request
-    :param dict headers: HTTP Headers to send with the request
-    :param float timeout: Socket/Read timeout for the request
-
-    :return: An http response
-    :rtype: A :class:`Response <models.Response>` object
-
-    See the requests documentation for explanation of all these parameters
-
-    Currently proxies, files, and cookies are all ignored
-    """
-    http = httplib2.Http(
-        timeout=timeout,
-        ca_certs=get_cert_file(),
-        proxy_info=Connection.proxy_info(),
-    )
-    http.follow_redirects = allow_redirects
-
-    if auth is not None:
-        http.add_credentials(auth[0], auth[1])
-
-    def encode_atom(atom):
-            if isinstance(atom, (integer_types, binary_type)):
-                return atom
-            elif isinstance(atom, string_types):
-                return atom.encode('utf-8')
-            else:
-                raise ValueError('list elements should be an integer, '
-                                 'binary, or string')
-
-    if data is not None:
-        udata = {}
-        for k, v in iteritems(data):
-            key = k.encode('utf-8')
-            if isinstance(v, (list, tuple, set)):
-                udata[key] = [encode_atom(x) for x in v]
-            elif isinstance(v, (integer_types, binary_type, string_types)):
-                udata[key] = encode_atom(v)
-            else:
-                raise ValueError('data should be an integer, '
-                                 'binary, or string, or sequence ')
-        data = urlencode(udata, doseq=True)
-
-    if params is not None:
-        enc_params = urlencode(params, doseq=True)
-        if urlparse(url).query:
-            url = '%s&%s' % (url, enc_params)
-        else:
-            url = '%s?%s' % (url, enc_params)
-
-    resp, content = http.request(url, method, headers=headers, body=data)
-
-    # Format httplib2 request as requests object
-    return Response(resp, content.decode('utf-8'), url)
-
-
-def make_twilio_request(method, uri, **kwargs):
-    """
-    Make a request to Twilio. Throws an error
-
-    :return: a requests-like HTTP response
-    :rtype: :class:`RequestsResponse`
-    :raises TwilioRestException: if the response is a 400
-        or 500-level response.
-    """
-    headers = kwargs.get("headers", {})
-
-    user_agent = "twilio-python/%s (Python %s)" % (
-        twilio.__version__,
-        platform.python_version(),
-    )
-    headers["User-Agent"] = user_agent
-    headers["Accept-Charset"] = "utf-8"
-
-    if method == "POST" and "Content-Type" not in headers:
-        headers["Content-Type"] = "application/x-www-form-urlencoded"
-
-    kwargs["headers"] = headers
-
-    if "Accept" not in headers:
-        headers["Accept"] = "application/json"
-        uri += ".json"
-
-    resp = make_request(method, uri, **kwargs)
-
-    if not resp.ok:
-        try:
-            error = json.loads(resp.content)
-            code = error["code"]
-            message = "%s: %s" % (code, error["message"])
-        except:
-            code = None
-            message = resp.content
-
-        def red(msg):
-            return u("\033[31m\033[49m%s\033[0m") % msg
-
-        def white(msg):
-            return u("\033[37m\033[49m%s\033[0m") % msg
-
-        def blue(msg):
-            return u("\033[34m\033[49m%s\033[0m") % msg
-
-        def orange(msg):
-            return u("\033[33m\033[49m%s\033[0m") % msg
-
-        def teal(msg):
-            return u("\033[36m\033[49m%s\033[0m") % msg
-
-        # If it makes sense to print a human readable error message, try to do
-        # it. The one problem is that someone might catch this error and try to
-        # display the message from it to an end user.
-        if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
-            msg = red("\nHTTP Error. ")
-            msg += white("Your request was:\n\n")
-            msg += teal("%s %s" % (method, uri))
-            msg += white("\n\nTwilio returned the following information:")
-            msg += blue("\n\n" + str(message) + "\n")
-            if code:
-                msg += white("\nMore information may be available here:\n\n")
-                msg += blue("https://www.twilio.com/docs/errors/%s" % code)
-                msg += "\n\n"
-        else:
-            msg = message
-
-        raise TwilioRestException(resp.status_code, resp.url, msg, code)
-
-    return resp
 
 
 class Resource(object):
@@ -187,10 +11,9 @@ class Resource(object):
 
     name = "Resource"
 
-    def __init__(self, base_uri, auth, timeout=UNSET_TIMEOUT):
+    def __init__(self, base_uri, client):
         self.base_uri = base_uri
-        self.auth = auth
-        self.timeout = timeout
+        self.client = client
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
@@ -202,15 +25,16 @@ class Resource(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def get_resource(uri, **kwargs):
+        pass
+
     def request(self, method, uri, **kwargs):
         """
         Send an HTTP request to the resource.
 
         :raises: a :exc:`~twilio.TwilioRestException`
         """
-        if 'timeout' not in kwargs and self.timeout is not UNSET_TIMEOUT:
-            kwargs['timeout'] = self.timeout
-        resp = make_twilio_request(method, uri, auth=self.auth, **kwargs)
+        resp = self.client.make_twilio_request(method, uri, **kwargs)
 
         logging.debug(resp.content)
 
@@ -241,11 +65,7 @@ class InstanceResource(Resource):
     def __init__(self, parent, sid):
         self.parent = parent
         self.name = sid
-        super(InstanceResource, self).__init__(
-            parent.uri,
-            parent.auth,
-            parent.timeout
-        )
+        super(InstanceResource, self).__init__(parent.uri, parent.client)
 
     def load(self, entries):
         if "from" in entries.keys():
@@ -266,11 +86,7 @@ class InstanceResource(Resource):
         Load all subresources
         """
         for resource in self.subresources:
-            list_resource = resource(
-                self.uri,
-                self.parent.auth,
-                self.parent.timeout
-            )
+            list_resource = resource(self.uri, self.client)
             self.__dict__[list_resource.key] = list_resource
 
     def update_instance(self, **kwargs):
@@ -360,9 +176,9 @@ class ListResource(Resource):
         resp, instance = self.request("POST", self.uri,
                                       data=transform_params(body))
 
-        if resp.status_code not in (200, 201):
-            raise TwilioRestException(resp.status_code,
-                                      self.uri, "Resource not created")
+        #if resp.status_code not in (200, 201):
+            #raise TwilioRestException(resp.status_code,
+                                      #self.uri, "Resource not created")
 
         return self.load_instance(instance)
 

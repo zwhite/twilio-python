@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from mock import Mock, sentinel, patch, ANY
+from mock import Mock
 from nose.tools import assert_equal, assert_true
 from six import advance_iterator
 
-from twilio.rest.resources.imports import json
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Resource
 from twilio.rest.resources import ListResource
 from twilio.rest.resources import InstanceResource
@@ -13,19 +13,19 @@ from twilio.rest.resources import InstanceResource
 base_uri = "https://api.twilio.com/2010-04-01"
 account_sid = "AC123"
 auth = (account_sid, "token")
+client = TwilioRestClient(*auth)
 
 
 def test_resource_init():
-    r = Resource(base_uri, auth)
+    r = Resource(base_uri, client)
     uri = "%s/%s" % (base_uri, r.name)
 
     assert_equal(r.base_uri, base_uri)
-    assert_equal(r.auth, auth)
     assert_equal(r.uri, uri)
 
 
 def test_equivalence():
-    p = ListResource(base_uri, auth)
+    p = ListResource(base_uri, client)
     r1 = p.load_instance({"sid": "AC123"})
     r2 = p.load_instance({"sid": "AC123"})
     assert_equal(r1, r2)
@@ -34,7 +34,7 @@ def test_equivalence():
 class ListResourceTest(unittest.TestCase):
 
     def setUp(self):
-        self.r = ListResource(base_uri, auth)
+        self.r = ListResource(base_uri, client)
 
     def testListResourceInit(self):
         uri = "%s/%s" % (base_uri, self.r.name)
@@ -102,7 +102,8 @@ class ListResourceTest(unittest.TestCase):
 class testInstanceResourceInit(unittest.TestCase):
 
     def setUp(self):
-        self.parent = ListResource(base_uri, auth)
+        client = TwilioRestClient(*auth)
+        self.parent = ListResource(base_uri, client)
         self.r = InstanceResource(self.parent, "123")
         self.uri = "%s/%s" % (self.parent.uri, "123")
 
@@ -139,29 +140,4 @@ class testInstanceResourceInit(unittest.TestCase):
         m = Mock()
         self.r.subresources = [m]
         self.r.load_subresources()
-        m.assert_called_with(self.r.uri, self.r.auth, self.r.timeout)
-
-
-class testTimeoutPropagation(unittest.TestCase):
-    def setUp(self):
-        self.parent = ListResource(base_uri, auth, timeout=sentinel.timeout)
-        self.r = InstanceResource(self.parent, "123")
-        self.uri = "%s/%s" % (self.parent.uri, "123")
-
-    @patch('twilio.rest.resources.base.make_request')
-    def testPassThrough(self, mock_request):
-        mock_response = Mock()
-        mock_response.ok = True,
-        mock_response.content = json.dumps({'key': 'value'})
-        mock_request.return_value = mock_response
-
-        assert_equal(self.r.timeout, sentinel.timeout)
-        assert_equal((mock_response, {'key': 'value'}), self.r.request('GET', base_uri))
-
-        mock_request.assert_called_once_with(
-            'GET',
-            base_uri + '.json',
-            headers=ANY,
-            timeout=sentinel.timeout,
-            auth=ANY
-        )
+        m.assert_called_with(self.r.uri, self.r.client)

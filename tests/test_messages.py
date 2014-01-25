@@ -4,6 +4,7 @@ import unittest
 from mock import Mock
 from six import u
 
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Messages
 
 DEFAULT = {
@@ -17,7 +18,8 @@ DEFAULT = {
 class MessageTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = Messages("foo", ("sid", "token"))
+        client = TwilioRestClient("sid", "token")
+        self.resource = Messages("foo", client)
         self.params = DEFAULT.copy()
 
     def test_list_on(self):

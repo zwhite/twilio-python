@@ -2,13 +2,15 @@ import unittest
 
 from mock import Mock, patch
 
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Applications, Application
 
 
 class ApplicationsTest(unittest.TestCase):
     def setUp(self):
         self.parent = Mock()
-        self.resource = Applications("http://api.twilio.com", ("user", "pass"))
+        client = TwilioRestClient("user", "pass")
+        self.resource = Applications("http://api.twilio.com", client)
 
     def test_create_application_sms_url_method(self):
         self.resource.create_instance = Mock()

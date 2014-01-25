@@ -4,6 +4,8 @@ import unittest
 from mock import Mock
 from nose.tools import assert_equal
 
+
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import MediaList
 
 DEFAULT = {
@@ -16,7 +18,8 @@ DEFAULT = {
 class MediaTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = MediaList("foo", ("sid", "token"))
+        self.client = TwilioRestClient("sid", "token")
+        self.resource = MediaList("foo", self.client)
         self.params = DEFAULT.copy()
 
     def test_list_on(self):

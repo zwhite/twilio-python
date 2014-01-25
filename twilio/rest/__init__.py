@@ -1,9 +1,12 @@
-import logging
 import os
 import platform
+import sys
+
+import requests
+from six import u
+
+import twilio
 from twilio import TwilioException
-from twilio import __version__ as LIBRARY_VERSION
-from twilio.rest.resources import make_request
 from twilio.rest.resources import Accounts
 from twilio.rest.resources import Applications
 from twilio.rest.resources import AuthorizedConnectApps
@@ -11,7 +14,6 @@ from twilio.rest.resources import CallerIds
 from twilio.rest.resources import Calls
 from twilio.rest.resources import Conferences
 from twilio.rest.resources import ConnectApps
-from twilio.rest.resources import Connection
 from twilio.rest.resources import MediaList
 from twilio.rest.resources import Members
 from twilio.rest.resources import Messages
@@ -24,7 +26,6 @@ from twilio.rest.resources import Sandboxes
 from twilio.rest.resources import Sip
 from twilio.rest.resources import Sms
 from twilio.rest.resources import Transcriptions
-from twilio.rest.resources import UNSET_TIMEOUT
 from twilio.rest.resources import Usage
 
 
@@ -43,8 +44,53 @@ def find_credentials(environ=None):
         return None, None
 
 
-def set_twilio_proxy(proxy_url, proxy_port):
-    Connection.set_proxy_info(proxy_url, proxy_port)
+class Transport(object):
+    """An object for codifying various parameters to send to the Twilio API.
+
+    Example usage::
+
+        from twilio.rest import Transport, TwilioRestClient
+        transport = Transport(timeout=5)
+        client = TwilioRestClient("AC123", "456", transport)
+
+    :param float timeout: Raise an exception if the server has not issued a
+        response for ``timeout`` seconds (more precisely, if no bytes have been
+        received on the underlying socket for ``timeout`` seconds). The default
+        is 30.1 is set so Twilio should always return an HTTP response within
+        that time. Set a smaller timeout to return earlier.
+
+    :param int retries: The number of times to retry failed requests to the
+        Twilio API. A failed request is one that either:
+
+        - raises a connection error or a connection timeout
+        - receives a 429 Too Many Requests, a 502 Bad Gateway or a 503 Service
+          Unavailable response on any HTTP method
+        - receives a different status code in the 5xx status code range on a
+          GET or DELETE request.
+
+    :param str host: The host to authenticate against. Normally this is
+        api.twilio.com, but could be a host for a proxy server.
+
+    :param proxies: A dictionary of proxies to send the request through. This
+        uses the same format as the `proxy logic in the Python Requests
+        library.`
+    :type proxies: dictionary or None
+    """
+
+    def __init__(self, timeout=30.1, retries=3, host="api.twilio.com",
+                 proxies=None):
+        # XXX: support a shorter connection timeout.
+        self.timeout = timeout
+
+        # XXX: this is currently ignored. Hoping to merge retry support into
+        # urllib3, then we can call it directly there.
+        self.retries = retries
+        self.proxies = proxies
+
+        self.host = host
+        # We don't allow you to pass this in on purpose. Parts of the library
+        # will probably break if you specify a different value here.
+        self.version = "2010-04-01"
 
 
 class TwilioRestClient(object):
@@ -55,14 +101,18 @@ class TwilioRestClient(object):
         <https://twilio.com/user/account>`_
     :param str token: Your Auth Token from `your dashboard
         <https://twilio.com/user/account>`_
-    :param float timeout: The socket and read timeout for requests to Twilio
+    :param transport: A :class:`Transport` containing connection details about
+        the HTTP requests you'd like to send to Twilio. Passing ``None`` will
+        have the transport use Twilio's default settings.
+    :type transport: :class:`Transport` or None
     """
 
-    def __init__(self, account=None, token=None, base="https://api.twilio.com",
-                 version="2010-04-01", client=None, timeout=UNSET_TIMEOUT):
+    def __init__(self, account=None, token=None, transport=None):
         """
         Create a Twilio REST API client.
         """
+
+        self.transport = transport or Transport()
 
         # Get account credentials
         if not account or not token:
@@ -84,37 +134,38 @@ and be sure to replace the values for the Account SID and auth token with the
 values from your Twilio Account at https://www.twilio.com/user/account.
 """)
 
-        self.base = base
+        # The HTTPS here is hard coded on purpose; you shouldn't be connecting
+        # over HTTP with your auth credentials, as anyone with access to
+        # the connection between your client and Twilio could steal your
+        # credentials.
+        self.base = "https://{host}".format(host=self.transport.host)
         auth = (account, token)
-        version_uri = "%s/%s" % (base, version)
-        account_uri = "%s/%s/Accounts/%s" % (base, version, account)
+        version_uri = "{base}/{version}".format(base=self.base,
+                                                version=self.transport.version)
+        account_uri = "{base}/{version}/Accounts/{sid}".format(
+            base=self.base, version=self.transport.version, sid=account)
 
-        self.accounts = Accounts(version_uri, auth, timeout)
-        self.applications = Applications(account_uri, auth, timeout)
-        self.authorized_connect_apps = AuthorizedConnectApps(
-            account_uri,
-            auth,
-            timeout
-        )
-        self.calls = Calls(account_uri, auth, timeout)
-        self.caller_ids = CallerIds(account_uri, auth, timeout)
-        self.connect_apps = ConnectApps(account_uri, auth, timeout)
-        self.notifications = Notifications(account_uri, auth, timeout)
-        self.recordings = Recordings(account_uri, auth, timeout)
-        self.transcriptions = Transcriptions(account_uri, auth, timeout)
-        self.sms = Sms(account_uri, auth, timeout)
-        self.phone_numbers = PhoneNumbers(account_uri, auth, timeout)
-        self.conferences = Conferences(account_uri, auth, timeout)
-        self.queues = Queues(account_uri, auth, timeout)
-        self.sandboxes = Sandboxes(account_uri, auth, timeout)
-        self.usage = Usage(account_uri, auth, timeout)
-        self.messages = Messages(account_uri, auth, timeout)
-        self.media = MediaList(account_uri, auth, timeout)
-        self.sip = Sip(account_uri, auth, timeout)
+        self.accounts = Accounts(version_uri, self)
+        self.applications = Applications(account_uri, self)
+        self.authorized_connect_apps = AuthorizedConnectApps(account_uri, self)
+        self.calls = Calls(account_uri, self)
+        self.caller_ids = CallerIds(account_uri, self)
+        self.connect_apps = ConnectApps(account_uri, self)
+        self.notifications = Notifications(account_uri, self)
+        self.recordings = Recordings(account_uri, self)
+        self.transcriptions = Transcriptions(account_uri, self)
+        self.sms = Sms(account_uri, self)
+        self.phone_numbers = PhoneNumbers(account_uri, self)
+        self.conferences = Conferences(account_uri, self)
+        self.queues = Queues(account_uri, self)
+        self.sandboxes = Sandboxes(account_uri, self)
+        self.usage = Usage(account_uri, self)
+        self.messages = Messages(account_uri, self)
+        self.media = MediaList(account_uri, self)
+        self.sip = Sip(account_uri, self)
 
         self.auth = auth
         self.account_uri = account_uri
-        self.timeout = timeout
 
     def participants(self, conference_sid):
         """
@@ -122,7 +173,7 @@ values from your Twilio Account at https://www.twilio.com/user/account.
         :class:`~twilio.rest.resources.Conference` with given conference_sid
         """
         base_uri = "%s/Conferences/%s" % (self.account_uri, conference_sid)
-        return Participants(base_uri, self.auth, self.timeout)
+        return Participants(base_uri, self)
 
     def members(self, queue_sid):
         """
@@ -131,58 +182,117 @@ values from your Twilio Account at https://www.twilio.com/user/account.
         given queue_sid
         """
         base_uri = "%s/Queues/%s" % (self.account_uri, queue_sid)
-        return Members(base_uri, self.auth, self.timeout)
+        return Members(base_uri, self)
 
-    def request(self, path, method=None, vars=None):
-        """sends a request and gets a response from the Twilio REST API
-
-        .. deprecated:: 3.0
-
-        :param path: the URL (relative to the endpoint URL, after the /v1
-        :param url: the HTTP method to use, defaults to POST
-        :param vars: for POST or PUT, a dict of data to send
-
-        :returns: Twilio response in XML or raises an exception on error
-        :raises: a :exc:`ValueError` if the path is invalid
-        :raises: a :exc:`NotImplementedError` if the method is unknown
-
-        This method is only included for backwards compatability reasons.
-        It will be removed in a future version
+    def make_twilio_request(self, method, uri, **kwargs):
         """
-        logging.warning(":meth:`TwilioRestClient.request` is deprecated and "
-                        "will be removed in a future version")
+        Make a request to Twilio. Throws an error
 
-        vars = vars or {}
-        params = None
-        data = None
+        :param string method: the HTTP method to use for the request
+        :param string uri: the URI to request
+        :param dict params: the query parameters to attach to the request
+        :param dict data: the POST form data to send with the request
 
-        if not path or len(path) < 1:
-            raise ValueError('Invalid path parameter')
-        if method and method not in ['GET', 'POST', 'DELETE', 'PUT']:
-            raise NotImplementedError(
-                'HTTP %s method not implemented' % method)
-
-        if path[0] == '/':
-            uri = self.base + path
-        else:
-            uri = self.base + '/' + path
-
-        if method == "GET":
-            params = vars
-        elif method == "POST" or method == "PUT":
-            data = vars
-
-        user_agent = "twilio-python %s (python-%s)" % (
-            LIBRARY_VERSION,
+        :return: a requests-like HTTP response
+        :rtype: :class:`RequestsResponse`
+        :raises TwilioRestException: if the response is a 400
+            or 500-level response, or a timeout.
+        """
+        user_agent = "twilio-python/%s (Python %s)" % (
+            twilio.__version__,
             platform.python_version(),
         )
-
         headers = {
             "User-Agent": user_agent,
+            "Accept": "application/json",
             "Accept-Charset": "utf-8",
         }
 
-        resp = make_request(method, uri, auth=self.auth, data=data,
-                            params=params, headers=headers)
+        if method == "POST" and "Content-Type" not in headers:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-        return resp.content
+        uri += ".json"
+
+        resp = requests.request(method, uri, auth=self.auth, headers=headers,
+                                timeout=self.transport.timeout,
+                                proxies=self.transport.proxies,
+                                **kwargs)
+        if not resp.ok:
+            try:
+                error = resp.json()
+                code = error["code"]
+                message = "%s: %s" % (code, error["message"])
+            except:
+                code = None
+                message = resp.content
+
+            raise TwilioRestException(method, resp.url, resp.status_code, code,
+                                      message)
+
+        return resp
+
+
+class TwilioRestException(TwilioException):
+    """ A generic 400 or 500 level exception from the Twilio API
+
+    :param str method: the HTTP method that was returned for the exception
+    :param str uri: The URI that caused the exception
+    :param int status: the HTTP status that was returned for the exception
+    :param str msg: A human-readable message for the error
+    :param int|None code: A Twilio-specific error code for the error. This is
+         not available for all errors.
+    """
+
+    # XXX: Move this to the twilio.rest folder
+
+    def __init__(self, method='GET', uri='/', status=200, code=None, msg=""):
+        self.uri = uri
+        self.status = status
+        self.msg = msg
+        self.code = code
+        self.method = method
+
+    def __str__(self):
+        """ Try to pretty-print the exception, if this is going on screen. """
+
+        def red(msg):
+            return u("\033[31m\033[49m%s\033[0m") % msg
+
+        def white(msg):
+            return u("\033[37m\033[49m%s\033[0m") % msg
+
+        def blue(msg):
+            return u("\033[34m\033[49m%s\033[0m") % msg
+
+        def orange(msg):
+            return u("\033[33m\033[49m%s\033[0m") % msg
+
+        def teal(msg):
+            return u("\033[36m\033[49m%s\033[0m") % msg
+
+        def get_uri(code):
+            return "https://www.twilio.com/docs/errors/{}".format(code)
+
+        # If it makes sense to print a human readable error message, try to
+        # do it. The one problem is that someone might catch this error and
+        # try to display the message from it to an end user.
+        if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
+            msg = (
+                "\n{red_error} {request_was}\n\n{http_line}"
+                "\n\n{twilio_returned}\n\n{message}\n".format(
+                    red_error=red("HTTP Error"),
+                    request_was=white("Your request was:"),
+                    http_line=teal("%s %s" % (self.method, self.uri)),
+                    twilio_returned=white(
+                        "Twilio returned the following information:"),
+                    message=blue(str(self.msg))
+                ))
+            if self.code:
+                msg = "".join([msg, "\n{more_info}\n\n{uri}\n\n".format(
+                    more_info=white("More information may be available here:"),
+                    uri=blue(get_uri(self.code))),
+                ])
+            return msg
+        else:
+            return "HTTP {} error: {}".format(self.status, self.msg,
+                                              self.uri)

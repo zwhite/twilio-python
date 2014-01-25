@@ -41,21 +41,18 @@ directly to the the constructor.
 Proxies
 -------
 
-:class:`TwilioRestClient` supports HTTP and SOCKS4/5 proxies. You can change
-the proxy configuration at any time with the :class:`Connection` class:
+:class:`TwilioRestClient` supports HTTP and SOCKS4/5 proxies, using the same
+format as the Python Requests library. Here's an example:
 
 .. code-block:: python
 
-    from twilio.rest.resources import Connection
-    from twilio.rest.resources.connection import PROXY_TYPE_SOCKS5
-
-    Connection.set_proxy_info(
-        'example.com',
-        5000,
-        proxy_type=PROXY_TYPE_SOCKS5,
-        proxy_user='username',
-        proxy_pass='password',
-    )
+    from twilio.rest import Transport, TwilioRestClient
+    proxies = {
+      "http": "http://10.10.1.10:3128",
+      "https": "http://10.10.1.10:1080",
+    }
+    transport = Transport(proxies=proxies)
+    client = TwilioRestClient(account="AC123", token="456", transport=transport)
 
 The :class:`TwilioRestClient` will retrieve and use the current proxy
 information for each request.
@@ -65,8 +62,8 @@ Listing Resources
 -------------------
 
 The :class:`TwilioRestClient` gives you access to various list resources.
-:meth:`ListResource.list <twilio.rest.resources.ListResource.list>`, by default,
-returns the most recent 50 instance resources.
+:meth:`ListResource.list <twilio.rest.resources.base.ListResource.list>`, by
+default, returns the most recent 50 instance resources.
 
 .. code-block:: python
 
@@ -97,11 +94,10 @@ The following will return page 3 with page size of 25.
 Listing All Resources
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Sometimes you'd like to retrieve all records from a list resource.
-Instead of manually paging over the resource,
-the :class:`resources.ListResource.iter` method returns a generator.
-After exhausting the current page,
-the generator will request the next page of results.
+Sometimes you'd like to retrieve all records from a list resource. Instead of
+manually paging over the resource, the :class:`resources.ListResource.iter`
+method returns a generator. After exhausting the current page, the generator
+will request the next page of results.
 
 .. warning:: Accessing all your records can be slow. We suggest only doing so when you absolutely need all the records.
 
@@ -121,8 +117,7 @@ the generator will request the next page of results.
 Get an Individual Resource
 -----------------------------
 
-To get an individual instance resource, use
-:meth:`resources.ListResource.get`.
+To get an individual instance resource, use :meth:`resources.ListResource.get`.
 Provide the :attr:`sid` of the resource you'd like to get.
 
 .. code-block:: python

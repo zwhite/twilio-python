@@ -1,8 +1,9 @@
 import twilio
-from twilio import TwilioException, TwilioRestException
+from twilio import TwilioException
 
 from twilio.rest.resources.imports import (
-    parse_qs, json, httplib2
+    parse_qs,
+    json,
 )
 
 from twilio.rest.resources.util import (
@@ -10,8 +11,7 @@ from twilio.rest.resources.util import (
     convert_keys, normalize_dates, UNSET_TIMEOUT
 )
 from twilio.rest.resources.base import (
-    Response, Resource, InstanceResource, ListResource,
-    make_request, make_twilio_request
+    Resource, InstanceResource, ListResource,
 )
 from twilio.rest.resources.phone_numbers import (
     AvailablePhoneNumber, AvailablePhoneNumbers, PhoneNumber, PhoneNumbers
@@ -25,7 +25,6 @@ from twilio.rest.resources.connect_apps import (
 )
 from twilio.rest.resources.calls import Call, Calls
 from twilio.rest.resources.caller_ids import CallerIds, CallerId
-from twilio.rest.resources.connection import Connection
 from twilio.rest.resources.sandboxes import Sandbox, Sandboxes
 from twilio.rest.resources.sms_messages import (
     Sms, SmsMessage, SmsMessages, ShortCode, ShortCodes)

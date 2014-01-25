@@ -16,6 +16,8 @@ analysis:
 test: analysis
 	. venv/bin/activate; nosetests
 
+# This makes the unit tests run about 100ms slower, which is why it's
+# a separate target.
 cover:
 	. venv/bin/activate; nosetests --with-coverage --cover-package=twilio
 

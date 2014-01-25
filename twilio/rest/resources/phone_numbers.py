@@ -2,7 +2,6 @@ import re
 
 from twilio import TwilioException
 from twilio.rest.resources.util import change_dict_key, transform_params
-from twilio.rest.resources.util import UNSET_TIMEOUT
 from twilio.rest.resources import InstanceResource, ListResource
 
 
@@ -66,8 +65,8 @@ class AvailablePhoneNumbers(ListResource):
     key = "available_phone_numbers"
     instance = AvailablePhoneNumber
 
-    def __init__(self, base_uri, auth, timeout, phone_numbers):
-        super(AvailablePhoneNumbers, self).__init__(base_uri, auth, timeout)
+    def __init__(self, base_uri, client, phone_numbers):
+        super(AvailablePhoneNumbers, self).__init__(base_uri, client)
         self.phone_numbers = phone_numbers
 
     def get(self, sid):
@@ -200,8 +199,7 @@ class PhoneNumber(InstanceResource):
 
             self.parent = PhoneNumbers(
                 uri,
-                self.parent.auth,
-                self.parent.timeout
+                self.client,
             )
             self.base_uri = self.parent.uri
 
@@ -243,10 +241,10 @@ class PhoneNumbers(ListResource):
     key = "incoming_phone_numbers"
     instance = PhoneNumber
 
-    def __init__(self, base_uri, auth, timeout=UNSET_TIMEOUT):
-        super(PhoneNumbers, self).__init__(base_uri, auth, timeout)
-        self.available_phone_numbers = \
-            AvailablePhoneNumbers(base_uri, auth, timeout, self)
+    def __init__(self, base_uri, client):
+        super(PhoneNumbers, self).__init__(base_uri, client)
+        self.available_phone_numbers = AvailablePhoneNumbers(base_uri, client,
+                                                             self)
 
     def delete(self, sid):
         """

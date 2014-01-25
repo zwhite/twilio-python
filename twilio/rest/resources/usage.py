@@ -120,15 +120,15 @@ class BaseUsageRecords(ListResource):
 
 class UsageRecords(BaseUsageRecords):
 
-    def __init__(self, base_uri, auth, timeout=UNSET_TIMEOUT):
-        super(UsageRecords, self).__init__(base_uri, auth, timeout)
-        self.daily = UsageRecordsDaily(base_uri, auth, timeout)
-        self.monthly = UsageRecordsMonthly(base_uri, auth, timeout)
-        self.yearly = UsageRecordsYearly(base_uri, auth, timeout)
-        self.today = UsageRecordsToday(base_uri, auth, timeout)
-        self.yesterday = UsageRecordsYesterday(base_uri, auth, timeout)
-        self.this_month = UsageRecordsThisMonth(base_uri, auth, timeout)
-        self.last_month = UsageRecordsLastMonth(base_uri, auth, timeout)
+    def __init__(self, base_uri, client):
+        super(UsageRecords, self).__init__(base_uri, client)
+        self.daily = UsageRecordsDaily(base_uri, client)
+        self.monthly = UsageRecordsMonthly(base_uri, client)
+        self.yearly = UsageRecordsYearly(base_uri, client)
+        self.today = UsageRecordsToday(base_uri, client)
+        self.yesterday = UsageRecordsYesterday(base_uri, client)
+        self.this_month = UsageRecordsThisMonth(base_uri, client)
+        self.last_month = UsageRecordsLastMonth(base_uri, client)
 
 
 class UsageRecordsDaily(BaseUsageRecords):
@@ -174,7 +174,6 @@ class Usage(object):
     Holds all the specific Usage list resources
     """
 
-    def __init__(self, base_uri, auth, timeout=UNSET_TIMEOUT):
-        self.records = UsageRecords(base_uri, auth, timeout=timeout)
-        self.triggers = UsageTriggers(base_uri, auth, timeout=timeout)
-        self.timeout = timeout
+    def __init__(self, base_uri, client):
+        self.records = UsageRecords(base_uri, client)
+        self.triggers = UsageTriggers(base_uri, client)

@@ -1,6 +1,9 @@
 from datetime import date
+
 from mock import patch
 from nose.tools import raises, assert_true
+
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Calls
 from tools import create_mock_json
 
@@ -9,10 +12,11 @@ ACCOUNT_SID = "AC123"
 AUTH = (ACCOUNT_SID, "token")
 CALL_SID = "CA47e13748ed59a5733d2c1c1c69a83a28"
 
-list_resource = Calls(BASE_URI, AUTH)
+client = TwilioRestClient(ACCOUNT_SID, "token")
+list_resource = Calls(BASE_URI, client)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_create_call(mock):
     resp = create_mock_json("tests/resources/calls_instance.json")
     resp.status_code = 201
@@ -28,10 +32,10 @@ def test_create_call(mock):
         'ApplicationSid': 'APPSID',
         }
 
-    mock.assert_called_with("POST", uri, data=exp_params, auth=AUTH)
+    mock.assert_called_with("POST", uri, data=exp_params)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_paging(mock):
     resp = create_mock_json("tests/resources/calls_list.json")
     mock.return_value = resp
@@ -40,10 +44,10 @@ def test_paging(mock):
     list_resource.list(started_before=date(2010, 12, 5))
     exp_params = {'StartTime<': '2010-12-05'}
 
-    mock.assert_called_with("GET", uri, params=exp_params, auth=AUTH)
+    mock.assert_called_with("GET", uri, params=exp_params)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_get(mock):
     resp = create_mock_json("tests/resources/calls_instance.json")
     mock.return_value = resp
@@ -51,10 +55,10 @@ def test_get(mock):
     uri = "%s/Calls/%s" % (BASE_URI, CALL_SID)
     list_resource.get(CALL_SID)
 
-    mock.assert_called_with("GET", uri, auth=AUTH)
+    mock.assert_called_with("GET", uri)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_hangup(mock):
     resp = create_mock_json("tests/resources/calls_instance.json")
     resp.status_code = 204
@@ -64,11 +68,11 @@ def test_hangup(mock):
     r = list_resource.hangup(CALL_SID)
     exp_data = {"Status": "completed"}
 
-    mock.assert_called_with("POST", uri, data=exp_data, auth=AUTH)
+    mock.assert_called_with("POST", uri, data=exp_data)
     assert_true(r)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_cancel(mock):
     resp = create_mock_json("tests/resources/calls_instance.json")
     resp.status_code = 204
@@ -78,7 +82,7 @@ def test_cancel(mock):
     r = list_resource.cancel(CALL_SID)
     exp_data = {"Status": "canceled"}
 
-    mock.assert_called_with("POST", uri, data=exp_data, auth=AUTH)
+    mock.assert_called_with("POST", uri, data=exp_data)
     assert_true(r)
 
 

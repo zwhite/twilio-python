@@ -61,10 +61,10 @@ class Sms(object):
     name = "SMS"
     key = "sms"
 
-    def __init__(self, base_uri, auth, timeout):
+    def __init__(self, base_uri, client):
         self.uri = "%s/SMS" % base_uri
-        self.messages = SmsMessages(self.uri, auth, timeout)
-        self.short_codes = ShortCodes(self.uri, auth, timeout)
+        self.messages = SmsMessages(self.uri, client)
+        self.short_codes = ShortCodes(self.uri, client)
 
 
 class SmsMessage(InstanceResource):
@@ -90,7 +90,7 @@ class SmsMessage(InstanceResource):
 
       The unique id of the Account that sent this SMS message.
 
-   .. attribute:: from
+   .. attribute:: from_
 
       The phone number that initiated the message in E.164 format.
       For incoming messages, this will be the remote phone.

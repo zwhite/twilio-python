@@ -1,7 +1,10 @@
 from datetime import date
 import unittest
 
-from mock import Mock
+from mock import Mock, patch
+
+from tools import create_mock_json
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Conferences
 
 DEFAULT = {
@@ -17,7 +20,8 @@ DEFAULT = {
 class ConferenceTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = Conferences("foo", ("sid", "token"))
+        client = TwilioRestClient("sid", "token")
+        self.resource = Conferences("foo", client)
         self.params = DEFAULT.copy()
 
     def test_list(self):
@@ -42,3 +46,12 @@ class ConferenceTest(unittest.TestCase):
         self.resource.list(created_before=date(2011, 1, 1))
         self.params["DateCreated<"] = "2011-01-01"
         self.resource.get_instances.assert_called_with(self.params)
+
+
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
+def test_participants(req):
+    resp = create_mock_json("tests/resources/participants_instance.json")
+    req.return_value = resp
+    client = TwilioRestClient("sid", "token")
+    client.participants("CF123").get("CA123")
+    req.assert_called_with("GET", "https://api.twilio.com/2010-04-01/Accounts/sid/Conferences/CF123/Participants/CA123")

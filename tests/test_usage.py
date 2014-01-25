@@ -2,17 +2,18 @@ from mock import patch, Mock
 from nose.tools import raises
 
 from tools import create_mock_json
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import Usage
 from twilio.rest.resources.usage import UsageTriggers, UsageTrigger
 
 BASE_URI = "https://api.twilio.com/2010-04-01/Accounts/AC123"
 ACCOUNT_SID = "AC123"
-AUTH = (ACCOUNT_SID, "token")
+client = TwilioRestClient(ACCOUNT_SID, "token")
 
-usage = Usage(BASE_URI, AUTH)
+usage = Usage(BASE_URI, client)
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_triggers_create(request):
     resp = create_mock_json("tests/resources/usage_triggers_instance.json")
     resp.status_code = 201
@@ -37,10 +38,10 @@ def test_triggers_create(request):
         "TriggerValue": "10.00",
         "CallbackUrl": "http://www.example.com",
         "CallbackMethod": "POST"
-    }, auth=AUTH)
+    })
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_triggers_paging(request):
     resp = create_mock_json("tests/resources/usage_triggers_list.json")
     request.return_value = resp
@@ -55,10 +56,10 @@ def test_triggers_paging(request):
         "Recurring": "daily",
         "UsageCategory": "sms",
         "TriggerBy": "count"
-    }, auth=AUTH)
+    })
 
 
-@patch("twilio.rest.resources.base.make_twilio_request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_records_paging(request):
     resp = create_mock_json("tests/resources/usage_records_list.json")
     request.return_value = resp
@@ -73,17 +74,17 @@ def test_records_paging(request):
         "StartDate": "2012-10-12",
         "EndDate": "2012-10-13",
         "Category": "sms"
-    }, auth=AUTH)
+    })
 
 
-@patch("twilio.rest.resources.base.Resource.request")
+@patch("twilio.rest.TwilioRestClient.make_twilio_request")
 def test_delete_trigger(req):
     resp = Mock()
     resp.content = ""
     resp.status_code = 204
-    req.return_value = resp, {}
+    req.return_value = resp
 
-    triggers = UsageTriggers("https://api.twilio.com", None)
+    triggers = UsageTriggers("https://api.twilio.com", client)
     trigger = UsageTrigger(triggers, "UT123")
     trigger.delete()
     uri = "https://api.twilio.com/Usage/Triggers/UT123"

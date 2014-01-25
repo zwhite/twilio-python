@@ -3,8 +3,11 @@ import unittest
 
 from mock import Mock
 
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import PhoneNumbers
 from twilio.rest.resources import PhoneNumber
+
+client = TwilioRestClient("AC123", "token")
 
 
 class PhoneNumberTest(unittest.TestCase):
@@ -12,7 +15,6 @@ class PhoneNumberTest(unittest.TestCase):
     def setUp(self):
         self.parent = Mock()
         self.uri = "/base"
-        self.auth = ("AC123", "token")
 
     def test_update_rename_status_callback_url(self):
         mock = Mock()
@@ -22,41 +24,41 @@ class PhoneNumberTest(unittest.TestCase):
         mock.update.assert_called_with("SID", status_callback="http://www.example.com")
 
     def test_update_instance_rename_status_callback_url(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update_instance = Mock()
         resource.update("SID", status_callback_url="http://www.example.com")
         resource.update_instance.assert_called_with("SID", {"status_callback": "http://www.example.com"})
 
     def test_application_sid(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update_instance = Mock()
         resource.update("SID", application_sid="foo")
         resource.update_instance.assert_called_with(
                 "SID", {"voice_application_sid": "foo", "sms_application_sid": "foo"})
 
     def test_voice_application_sid(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update_instance = Mock()
         resource.update("SID", voice_application_sid="foo")
         resource.update_instance.assert_called_with(
                 "SID", {"voice_application_sid": "foo"})
 
     def test_sms_application_sid(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update_instance = Mock()
         resource.update("SID", sms_application_sid="foo")
         resource.update_instance.assert_called_with(
                 "SID", {"sms_application_sid": "foo"})
 
     def test_status_callback_url(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update_instance = Mock()
         resource.update("SID", status_callback="foo")
         resource.update_instance.assert_called_with(
                 "SID", {"status_callback": "foo"})
 
     def test_transfer(self):
-        resource = PhoneNumbers(self.uri, self.auth)
+        resource = PhoneNumbers(self.uri, client)
         resource.update = Mock()
         resource.transfer("SID", "AC123")
         resource.update.assert_called_with("SID", account_sid="AC123")
@@ -86,7 +88,7 @@ class PhoneNumberTest(unittest.TestCase):
 
         types = {'local': 'Local', 'mobile': 'Mobile', 'tollfree': 'TollFree'}
         for type in ('local', 'mobile', 'tollfree'):
-            resource = PhoneNumbers(self.uri, self.auth)
+            resource = PhoneNumbers(self.uri, client)
             resource.request = Mock()
             resource.request.return_value = (None, None)
             resource.load_instance = Mock()
@@ -98,8 +100,7 @@ class PhoneNumberTest(unittest.TestCase):
 class IncomingPhoneNumbersTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = PhoneNumbers("http://api.twilio.com",
-                                     ("user", "pass"))
+        self.resource = PhoneNumbers("http://api.twilio.com", client)
 
     def test_mobile(self):
         request = Mock()

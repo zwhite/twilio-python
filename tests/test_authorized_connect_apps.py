@@ -4,6 +4,7 @@ import unittest
 from mock import Mock, patch
 from nose.tools import assert_equal
 
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import AuthorizedConnectApps
 from twilio.rest.resources import AuthorizedConnectApp
 
@@ -11,28 +12,25 @@ from twilio.rest.resources import AuthorizedConnectApp
 class AuthorizedConnectAppTest(unittest.TestCase):
 
     def setUp(self):
-        self.parent = Mock()
         self.uri = "/base"
-        self.auth = ("AC123", "token")
-        self.resource = AuthorizedConnectApps(self.uri, self.auth)
+        self.client = TwilioRestClient("AC123", "token")
+        self.resource = AuthorizedConnectApps(self.uri, self.client)
 
-    @patch("twilio.rest.resources.base.make_twilio_request")
+    @patch("twilio.rest.TwilioRestClient.make_twilio_request")
     def test_get(self, mock):
         mock.return_value = Mock()
         mock.return_value.content = '{"connect_app_sid": "SID"}'
 
         self.resource.get("SID")
-        mock.assert_called_with("GET", "/base/AuthorizedConnectApps/SID",
-                                auth=self.auth)
+        mock.assert_called_with("GET", "/base/AuthorizedConnectApps/SID")
 
-    @patch("twilio.rest.resources.base.make_twilio_request")
+    @patch("twilio.rest.TwilioRestClient.make_twilio_request")
     def test_list(self, mock):
         mock.return_value = Mock()
         mock.return_value.content = '{"authorized_connect_apps": []}'
 
         self.resource.list()
-        mock.assert_called_with("GET", "/base/AuthorizedConnectApps",
-                                params={}, auth=self.auth)
+        mock.assert_called_with("GET", "/base/AuthorizedConnectApps", params={})
 
     def test_load(self):
         instance = AuthorizedConnectApp(Mock(), "sid")

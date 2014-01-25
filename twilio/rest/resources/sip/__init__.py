@@ -13,16 +13,13 @@ class Sip(object):
     name = "SIP"
     key = "sip"
 
-    def __init__(self, base_uri, auth, timeout):
+    def __init__(self, base_uri, client):
         self.uri = "%s/SIP" % base_uri
-        self.auth = auth
-        self.timeout = timeout
-        self.domains = Domains(self.uri, auth, timeout)
-        self.credential_lists = SipCredentialLists(self.uri, auth, timeout)
+        self.domains = Domains(self.uri, client)
+        self.credential_lists = SipCredentialLists(self.uri, client)
         self.ip_access_control_lists = SipIpAccessControlLists(
             self.uri,
-            auth,
-            timeout,
+            client
         )
 
     def ip_access_control_list_mappings(self, domain_sid):

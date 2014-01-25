@@ -4,10 +4,12 @@ from mock import Mock
 from nose.tools import assert_equal, assert_true
 
 from twilio import TwilioException
+from twilio.rest import TwilioRestClient
 from twilio.rest.resources import AvailablePhoneNumber
 from twilio.rest.resources import AvailablePhoneNumbers
 from twilio.rest.resources import PhoneNumbers
-from twilio.rest.resources import UNSET_TIMEOUT
+
+BASE = "https://api.twilio.com"
 
 
 class AvailablePhoneNumberTest(unittest.TestCase):
@@ -31,8 +33,8 @@ class AvailablePhoneNumberTest(unittest.TestCase):
 class AvailablePhoneNumbersTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = AvailablePhoneNumbers("http://api.twilio.com",
-                                              ("user", "pass"), UNSET_TIMEOUT, Mock())
+        client = TwilioRestClient("user", "pass")
+        self.resource = AvailablePhoneNumbers(BASE, client, Mock())
 
     def test_get(self):
         self.assertRaises(TwilioException, self.resource.get, "PN123")
@@ -44,7 +46,7 @@ class AvailablePhoneNumbersTest(unittest.TestCase):
 
         self.resource.list()
 
-        uri = "http://api.twilio.com/AvailablePhoneNumbers/US/Local"
+        uri = BASE + "/AvailablePhoneNumbers/US/Local"
         request.assert_called_with("GET", uri, params={})
 
     def test_load_instance(self):
@@ -59,7 +61,7 @@ class AvailablePhoneNumbersTest(unittest.TestCase):
 
         self.resource.list()
 
-        uri = "http://api.twilio.com/AvailablePhoneNumbers/US/Local"
+        uri = BASE + "/AvailablePhoneNumbers/US/Local"
         request.assert_called_with("GET", uri, params={})
 
     def test_mobile(self):
@@ -69,15 +71,15 @@ class AvailablePhoneNumbersTest(unittest.TestCase):
 
         self.resource.list(type='mobile', country='GB')
 
-        uri = "http://api.twilio.com/AvailablePhoneNumbers/GB/Mobile"
+        uri = BASE + "/AvailablePhoneNumbers/GB/Mobile"
         request.assert_called_with("GET", uri, params={})
 
 
 class PhoneNumbersTest(unittest.TestCase):
 
     def setUp(self):
-        self.resource = PhoneNumbers("http://api.twilio.com",
-                                     ("user", "pass"))
+        client = TwilioRestClient("user", "pass")
+        self.resource = PhoneNumbers(BASE, client)
 
     def test_reference(self):
         assert_equal(self.resource.available_phone_numbers.phone_numbers,
@@ -93,7 +95,7 @@ class PhoneNumbersTest(unittest.TestCase):
         self.resource.purchase(area_code="530", status_callback_url="http://",
                                status_callback_method="POST")
 
-        uri = "http://api.twilio.com/IncomingPhoneNumbers"
+        uri = BASE + "/IncomingPhoneNumbers"
 
         data = {
             "AreaCode": "530",
