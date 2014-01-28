@@ -18,7 +18,6 @@ class RequestValidator(object):
 
         :param uri: full URI that Twilio requested on your server
         :param params: post vars that Twilio sent with the request
-        :param auth: tuple with (account_sid, token)
 
         :returns: The computed signature
         """
@@ -39,7 +38,6 @@ class RequestValidator(object):
         :param uri: full URI that Twilio requested on your server
         :param params: post vars that Twilio sent with the request
         :param signature: expexcted signature in HTTP X-Twilio-Signature header
-        :param auth: tuple with (account_sid, token)
 
         :returns: True if the request passes validation, False if not
         """

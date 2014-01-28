@@ -6,7 +6,7 @@ http://self-issued.info/docs/draft-jones-json-web-token-01.html
 import base64
 import hashlib
 import hmac
-from six import text_type, b
+from six import b
 
 
 # default text to binary representation conversion

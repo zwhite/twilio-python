@@ -25,9 +25,6 @@ class Resource(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def get_resource(uri, **kwargs):
-        pass
-
     def request(self, method, uri, **kwargs):
         """
         Send an HTTP request to the resource.

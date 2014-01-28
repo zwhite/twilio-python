@@ -15,11 +15,12 @@ class Sip(object):
 
     def __init__(self, base_uri, client):
         self.uri = "%s/SIP" % base_uri
+        self.client = client
         self.domains = Domains(self.uri, client)
         self.credential_lists = SipCredentialLists(self.uri, client)
         self.ip_access_control_lists = SipIpAccessControlLists(
             self.uri,
-            client
+            client,
         )
 
     def ip_access_control_list_mappings(self, domain_sid):
@@ -28,7 +29,7 @@ class Sip(object):
         :class:`Domain` with the given domain_sid
         """
         base_uri = "%s/Domains/%s" % (self.uri, domain_sid)
-        return IpAccessControlListMappings(base_uri, self.auth, self.timeout)
+        return IpAccessControlListMappings(base_uri, self.client)
 
     def credential_list_mappings(self, domain_sid):
         """
@@ -36,7 +37,7 @@ class Sip(object):
         :class:`Domain` with the given domain_sid
         """
         base_uri = "%s/Domains/%s" % (self.uri, domain_sid)
-        return CredentialListMappings(base_uri, self.auth, self.timeout)
+        return CredentialListMappings(base_uri, self.client)
 
     def ip_addresses(self, ip_access_control_list_sid):
         """
@@ -47,7 +48,7 @@ class Sip(object):
             self.uri,
             ip_access_control_list_sid,
         )
-        return IpAddresses(base_uri, self.auth, self.timeout)
+        return IpAddresses(base_uri, self.client)
 
     def credentials(self, credential_list_sid):
         """
@@ -58,4 +59,4 @@ class Sip(object):
             self.uri,
             credential_list_sid,
         )
-        return Credentials(base_uri, self.auth, self.timeout)
+        return Credentials(base_uri, self.client)

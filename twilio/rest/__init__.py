@@ -222,7 +222,7 @@ values from your Twilio Account at https://www.twilio.com/user/account.
                 error = resp.json()
                 code = error["code"]
                 message = "%s: %s" % (code, error["message"])
-            except:
+            except Exception:
                 code = None
                 message = resp.content
 
@@ -255,20 +255,17 @@ class TwilioRestException(TwilioException):
     def __str__(self):
         """ Try to pretty-print the exception, if this is going on screen. """
 
-        def red(msg):
-            return u("\033[31m\033[49m%s\033[0m") % msg
+        def red(words):
+            return u("\033[31m\033[49m%s\033[0m") % words
 
-        def white(msg):
-            return u("\033[37m\033[49m%s\033[0m") % msg
+        def white(words):
+            return u("\033[37m\033[49m%s\033[0m") % words
 
-        def blue(msg):
-            return u("\033[34m\033[49m%s\033[0m") % msg
+        def blue(words):
+            return u("\033[34m\033[49m%s\033[0m") % words
 
-        def orange(msg):
-            return u("\033[33m\033[49m%s\033[0m") % msg
-
-        def teal(msg):
-            return u("\033[36m\033[49m%s\033[0m") % msg
+        def teal(words):
+            return u("\033[36m\033[49m%s\033[0m") % words
 
         def get_uri(code):
             return "https://www.twilio.com/docs/errors/{}".format(code)
