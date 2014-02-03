@@ -193,10 +193,12 @@ values from your Twilio Account at https://www.twilio.com/user/account.
         :param dict params: the query parameters to attach to the request
         :param dict data: the POST form data to send with the request
 
-        :return: a requests-like HTTP response
-        :rtype: :class:`RequestsResponse`
+        :return: a response
+        :rtype: :class:`requests.Response`
         :raises TwilioRestException: if the response is a 400
-            or 500-level response, or a timeout.
+            or 500-level response
+        :raises TwilioRequestException: if a response was not received; most
+            likely a timeout, but possibly a connection error.
         """
         user_agent = "twilio-python/%s (Python %s)" % (
             twilio.__version__,
@@ -213,10 +215,14 @@ values from your Twilio Account at https://www.twilio.com/user/account.
 
         uri += ".json"
 
-        resp = requests.request(method, uri, auth=self.auth, headers=headers,
-                                timeout=self.transport.timeout,
-                                proxies=self.transport.proxies,
-                                **kwargs)
+        try:
+            resp = requests.request(method, uri, auth=self.auth,
+                                    headers=headers,
+                                    timeout=self.transport.timeout,
+                                    proxies=self.transport.proxies, **kwargs)
+        except requests.RequestException as e:
+            raise TwilioRequestException(e)
+
         if not resp.ok:
             try:
                 error = resp.json()
@@ -230,6 +236,21 @@ values from your Twilio Account at https://www.twilio.com/user/account.
                                       message)
 
         return resp
+
+
+class TwilioRequestException(TwilioException):
+    """ An exception raised when we don't get a HTTP response from the server
+
+    :param Exception reason: The wrapped exception. see requests/exceptions.py
+        for more information.
+    :param str url: the requested URL that raised an exception.
+    """
+    def __init__(self, url, reason):
+        self.reason = reason
+        message = ("Exception caused when requesting url: "
+                   "{url} (Caused by {typ}: {e})".format(
+                       url=url, typ=type(reason), e=reason))
+        TwilioException.__init__(self, message)
 
 
 class TwilioRestException(TwilioException):
