@@ -1,9 +1,9 @@
 import logging
-from twilio.compat import urlparse
+from ...compat import urlparse
 
-from twilio import TwilioException
-from twilio.rest.resources.imports import parse_qs, json
-from twilio.rest.resources.util import transform_params, parse_rfc2822_date
+from .. import TwilioException
+from .imports import parse_qs, json
+from .util import transform_params, parse_rfc2822_date
 
 
 class Resource(object):

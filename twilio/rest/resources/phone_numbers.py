@@ -1,8 +1,8 @@
 import re
 
-from twilio import TwilioException
-from twilio.rest.resources.util import change_dict_key, transform_params
-from twilio.rest.resources import InstanceResource, ListResource
+from .. import TwilioException
+from .util import change_dict_key, transform_params
+from . import InstanceResource, ListResource
 
 
 TYPES = {"local": "Local", "tollfree": "TollFree", "mobile": "Mobile"}
