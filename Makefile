@@ -27,3 +27,6 @@ docs:
 
 clean:
 	rm -rf venv
+
+deps:
+	cd twilio/packages && make all
