@@ -6,7 +6,7 @@ http://self-issued.info/docs/draft-jones-json-web-token-01.html
 import base64
 import hashlib
 import hmac
-from six import text_type, b
+from ..packages.six import b
 
 
 # default text to binary representation conversion
@@ -16,7 +16,7 @@ def binary(txt):
 try:
     import json
 except ImportError:
-    import simplejson as json
+    from .packages import simplejson as json
 
 
 __all__ = ['encode', 'decode', 'DecodeError']

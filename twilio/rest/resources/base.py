@@ -3,7 +3,13 @@ import os
 import platform
 import sys
 
-from six import integer_types, string_types, binary_type, iteritems, u
+from ...packages.six import (
+    binary_type,
+    integer_types,
+    iteritems,
+    string_types,
+    u,
+)
 from twilio.compat import urlparse
 from twilio.compat import urlencode
 

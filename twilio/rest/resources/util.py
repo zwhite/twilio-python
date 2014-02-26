@@ -1,6 +1,6 @@
 import datetime
 from email.utils import parsedate
-from six import iteritems
+from ...packages.six import iteritems
 
 
 def transform_params(parameters):
