@@ -5,14 +5,13 @@ except ImportError:
 
 from logging import getLogger
 from urllib import quote
-from urlparse import parse_qsl
+from urlparse import parse_qsl, urlunparse
 
 from twilio.util import RequestValidator
 
 
 class ValidateTwilioMiddleware(object):
-  """
-  WSGI middleware to validate that a request came from twilio.
+  """WSGI middleware to validate that a request came from twilio.
 
   https://www.twilio.com/docs/security
 
@@ -56,27 +55,27 @@ class ValidateTwilioMiddleware(object):
   def build_request_url(self, environ):
     """
       Returns the original request URL, as close as we can get at least.
-
-      :param baseurl:
-        If provided, the URL which just needs the QUERY_STRING appended
     """
-    if self.baseurl:
-      url = [self.baseurl]
+    if self.callback_url:
+      # The callback URL has been provided, use that directly
+      if environ.get('QUERY_STRING'):
+        return '?'.join((self.callback_url, environ.get('QUERY_STRING')))
 
-    else:
-      url = [environ['wsgi.url_scheme'], '://']
-      url.append(environ['HTTP_HOST'] or environ['SERVER_NAME'])
+      return self.callback_url
 
-      if environ['wsgi.url_scheme'] == 'http' and environ['HTTP_PORT'] != 80:
-        url.append(':' + environ['HTTP_PORT'])
+    # Attempt to reconstruct the URL per PEP 333 and https://www.twilio.com/docs/security
+    urlparts = [
+      environ['wsgi.url_scheme'],
+      environ['HTTP_HOST'] or environ['SERVER_NAME'],
+      quote(environ.get('SCRIPT_NAME', '')) + quote(environ.get('PATH_INFO', '')),
+      environ.get('QUERY_STRING', ''),
+      ''
+    ]
 
-      url.append(quote(environ.get('SCRIPT_NAME', '')))
-      url.append(quote(environ.get('PATH_INFO', '')))
+    if environ['wsgi.url_scheme'] == 'http' and environ['HTTP_PORT'] != 80:
+      urlparts[1] += ':' + str(environ['HTTP_PORT'])
 
-    if environ.get('QUERY_STRING'):
-      url.append('?' + environ['QUERY_STRING'])
-
-    return ''.join(url)
+    return urlunparse(urlparts)
 
   def denied(self, start_response):
     headers = [('Content-type', 'text/plain')]
